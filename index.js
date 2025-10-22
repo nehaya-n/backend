@@ -8,6 +8,13 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+app.use(cors({
+  origin: '*', // يمكنك لاحقًا تحديد الأصل: ['http://localhost:52593']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+
 // --- إعداد الاتصال بقاعدة البيانات ---
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
@@ -21,53 +28,84 @@ db.connect(err => {
         console.error("Database connection failed:", err);
         return;
     }
-    console.log("Connected to MySQL database!");
+    console.log("✅ Connected to MySQL database!");
 });
 
-// --- Routes ---
+// --- استيراد المسارات الأخرى ---
+const walletsRoute = require('./routes/wallets');
+app.use('/api/wallets', walletsRoute);
+app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/goals', require('./routes/goals'));
 
-// ✅ مسار تجريبي للتأكد أن السيرفر شغال
+// --- مسار تجريبي رئيسي ---
 app.get("/", (req, res) => {
     res.send("✅ Outlay backend is running!");
 });
 
-// تسجيل مستخدم جديد
-app.post('/register', (req, res) => {
+
+// ==============================
+// 🧩 LOGIN & REGISTER ROUTES
+// ==============================
+
+// ✅ تسجيل مستخدم جديد
+app.post("/register", (req, res) => {
     const { full_name, email, password, phone_number } = req.body;
 
-    const sql = 'INSERT INTO users (full_name, email, password, phone_number) VALUES (?, ?, ?, ?)';
-    db.query(sql, [full_name, email, password, phone_number], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Registration failed', error: err });
+    if (!full_name || !email || !password || !phone_number) {
+        return res.status(400).json({ message: "All fields are required." });
+    }
+
+    // التحقق إن كان البريد موجود مسبقًا
+    const checkQuery = "SELECT * FROM users WHERE email = ?";
+    db.query(checkQuery, [email], (err, result) => {
+        if (err) return res.status(500).json({ message: "Database error", error: err });
+
+        if (result.length > 0) {
+            return res.status(400).json({ message: "Email already exists." });
         }
-        res.json({ message: 'User registered successfully' });
+
+        // إدخال المستخدم الجديد
+        const insertQuery = "INSERT INTO users (full_name, email, password, phone_number) VALUES (?, ?, ?, ?)";
+        db.query(insertQuery, [full_name, email, password, phone_number], (err, result) => {
+            if (err) return res.status(500).json({ message: "Database error", error: err });
+            res.json({ message: "Registration successful 🎉" });
+        });
     });
 });
 
-// تسجيل دخول مستخدم
-app.post('/login', (req, res) => {
+
+// ✅ تسجيل الدخول
+app.post("/login", (req, res) => {
     const { email, password } = req.body;
 
-    const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
-    db.query(sql, [email, password], (err, results) => {
-        if (err) return res.status(500).json({ message: 'Login failed', error: err });
+    if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required." });
+    }
 
-        if (results.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
+    const query = "SELECT * FROM users WHERE email = ? AND password = ?";
+    db.query(query, [email, password], (err, results) => {
+        if (err) return res.status(500).json({ message: "Database error", error: err });
 
-        res.json({ message: 'Login successful', user: results[0] });
+        if (results.length === 0) {
+            return res.status(401).json({ message: "Invalid email or password." });
+        }
+
+        const user = results[0];
+        res.json({
+            message: "Login successful ✅",
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                email: user.email,
+                phone_number: user.phone_number
+            }
+        });
     });
 });
 
-// ✅ عرض كل المستخدمين (اختياري للفحص)
-app.get('/users', (req, res) => {
-    const sql = 'SELECT id, full_name, email, phone_number FROM users';
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ message: 'Failed to fetch users', error: err });
-        res.json(results);
-    });
-});
 
 // --- بدء السيرفر ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+module.exports = db;
