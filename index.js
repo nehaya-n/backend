@@ -36,6 +36,10 @@ const walletsRoute = require('./routes/wallets');
 app.use('/api/wallets', walletsRoute);
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/goals', require('./routes/goals'));
+const expensesRoutes = require('./routes/expenses');
+app.use('/api/expenses', expensesRoutes);
+
+
 
 // --- مسار تجريبي رئيسي ---
 app.get("/", (req, res) => {
