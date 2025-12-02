@@ -38,7 +38,11 @@ app.use('/api/wallets', walletsRoute);
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/goals', require('./routes/goals'));
 app.use('/api/expenses', require('./routes/expenses'));
-app.use('/api/clarifai', require('./routes/clarifai'));
+app.use('/api/ocr', require('./routes/ocr'));
+const clarifaiRoute = require("./routes/clarifai");
+app.use("/api/clarifai", clarifaiRoute);
+
+
 
 app.get("/", (req, res) => {
     res.send("✅ Outlay backend is running!");

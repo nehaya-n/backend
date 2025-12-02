@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db'); // ملف الاتصال بقاعدة البيانات
+const db = require('../db'); 
 
 // ------------------------------------------------------
 // POST /api/expenses → إضافة مصروف جديد وتحديث المحفظة
@@ -12,12 +12,22 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  if (category_name === 'Food' && (!item_name || item_name.trim() === '')) {
+  // food يجب أن تحتوي اسم
+  if (category_name.toLowerCase() === 'food' && (!item_name || item_name.trim() === '')) {
     return res.status(400).json({ message: 'Food expenses must include item_name' });
   }
 
-  // استخدام item_name للفئة Food، و icon لباقي الفئات
-  const finalItemName = category_name === 'Food' ? item_name : icon || null;
+  console.log('Item name received:', item_name);
+
+  // تجهيز الاسم
+  let finalItemName = item_name && item_name.trim() !== '' ? item_name.trim() : 'Unnamed Food';
+
+  // ❌ منع تخزين اسم يتكون من أرقام فقط مثل "57946"
+  if (/^\d+$/.test(finalItemName)) {
+    return res.status(400).json({ message: 'Invalid item_name: cannot be only numbers' });
+  }
+
+  console.log('Final item name to save:', finalItemName);
 
   // إدخال المصروف
   const sql = `
@@ -31,7 +41,7 @@ router.post('/', (req, res) => {
       return res.status(500).json({ message: 'Server error' });
     }
 
-    // تحديث رصيد المحفظة بعد إدخال المصروف
+    // تحديث رصيد المحفظة
     const updateWalletSql = `
       UPDATE wallets
       SET balance = balance - ?
@@ -44,7 +54,13 @@ router.post('/', (req, res) => {
         return res.status(500).json({ message: 'Server error updating wallet' });
       }
 
-      res.status(201).json({ message: 'Expense saved and wallet updated successfully' });
+      res.status(201).json({
+        message: 'Expense saved and wallet updated successfully',
+        item_name: finalItemName,
+        category_name,
+        amount,
+        date
+      });
     });
   });
 });
