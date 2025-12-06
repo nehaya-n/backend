@@ -5,18 +5,15 @@ require('dotenv').config();
 
 const app = express();
 
-// 🔥 رفع الحد للطلبات (حل مشكلة PayloadTooLarge)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 🔥 إعداد CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// --- MySQL Connection ---
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -32,7 +29,6 @@ db.connect(err => {
     console.log("✅ Connected to MySQL database!");
 });
 
-// --- ROUTES ---
 const walletsRoute = require('./routes/wallets');
 app.use('/api/wallets', walletsRoute);
 app.use('/api/transactions', require('./routes/transactions'));
@@ -41,8 +37,8 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/ocr', require('./routes/ocr'));
 const receiptRoutes = require('./routes/receipt');
 app.use("/api/receipt", receiptRoutes);
-const clarifaiRoute = require("./routes/clarifai");
-app.use("/api/clarifai", clarifaiRoute);
+const reportsRoutes = require('./routes/reports');
+app.use('/api/reports', reportsRoutes);
 
 
 app.get("/", (req, res) => {
@@ -75,6 +71,7 @@ app.post("/register", (req, res) => {
     });
 });
 
+
 // --- LOGIN ---
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
@@ -105,7 +102,7 @@ app.post("/login", (req, res) => {
     );
 });
 
-// --- START SERVER ---
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
