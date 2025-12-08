@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// ✅ عرض المحافظ (bank + cash)
+
 router.get('/', (req, res) => {
   const sql = "SELECT * FROM wallets ORDER BY id";
   db.query(sql, (err, results) => {
@@ -11,8 +11,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ تحديث الرصيد لمحفظة معينة
-// تحديث رصيد محفظة
+
 router.put('/:id', (req, res) => {
     const walletId = parseInt(req.params.id);
     const { balance } = req.body;

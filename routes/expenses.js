@@ -2,9 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db'); 
 
-// ------------------------------------------------------
-// POST /api/expenses → إضافة مصروف جديد وتحديث المحفظة
-// ------------------------------------------------------
+
 router.post('/', (req, res) => {
   const { user_id, wallet_id, category_name, item_name, icon, amount, date } = req.body;
 
@@ -12,13 +10,13 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  // food يجب أن تحتوي اسم
   if (category_name.toLowerCase() === 'food' && (!item_name || item_name.trim() === '')) {
     return res.status(400).json({ message: 'Food expenses must include item_name' });
   }
 
   console.log('Item name received:', item_name);
 
+<<<<<<< HEAD
   // تجهيز الاسم
  // تحديد اسم العنصر
 let finalItemName;
@@ -32,15 +30,16 @@ else {
   finalItemName = category_name;
 }
 
+=======
+  let finalItemName = item_name && item_name.trim() !== '' ? item_name.trim() : 'Unnamed Food';
+>>>>>>> 33cf99573e202b4007b70846d88a46d32b6747ed
 
-  // ❌ منع تخزين اسم يتكون من أرقام فقط مثل "57946"
   if (/^\d+$/.test(finalItemName)) {
     return res.status(400).json({ message: 'Invalid item_name: cannot be only numbers' });
   }
 
   console.log('Final item name to save:', finalItemName);
 
-  // إدخال المصروف
   const sql = `
     INSERT INTO expenses (user_id, wallet_id, category_name, item_name, amount, date)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -52,7 +51,6 @@ else {
       return res.status(500).json({ message: 'Server error' });
     }
 
-    // تحديث رصيد المحفظة
     const updateWalletSql = `
       UPDATE wallets
       SET balance = balance - ?
@@ -79,9 +77,7 @@ else {
 
 });
 
-// ------------------------------------------------------
-// GET /api/expenses → عرض جميع المصاريف
-// ------------------------------------------------------
+
 router.get('/', (req, res) => {
   const sql = `
     SELECT e.*, u.full_name AS user_name, w.name AS wallet_name
@@ -148,4 +144,157 @@ router.put('/:id', (req, res) => {
 });
 
 
+
+router.get('/debug/user-expenses', (req, res) => {
+  const { user_id } = req.query;
+  
+  const sql = `
+    SELECT 
+      id,
+      category_name,
+      LOWER(TRIM(category_name)) as normalized_category,
+      item_name,
+      amount,
+      DATE(date) as expense_date,
+      user_id,
+      wallet_id
+    FROM expenses
+    WHERE user_id = ?
+    ORDER BY date DESC
+    LIMIT 20
+  `;
+  
+  db.query(sql, [user_id], (err, rows) => {
+    if (err) {
+      console.error('Error fetching user expenses:', err);
+      return res.status(500).json({ message: 'Server error', error: err });
+    }
+    
+    
+    const categories = {};
+    let total = 0;
+    
+    rows.forEach(row => {
+      total += parseFloat(row.amount);
+      const cat = row.normalized_category;
+      categories[cat] = (categories[cat] || 0) + parseFloat(row.amount);
+    });
+    
+    res.json({
+      totalExpenses: rows.length,
+      totalAmount: total,
+      categories: categories,
+      recentExpenses: rows
+    });
+  });
+});
+
+
+
+router.get('/report/day', (req, res) => {
+  const { user_id, date } = req.query;
+
+  const sql = `
+    SELECT 
+      LOWER(TRIM(category_name)) AS category_name, 
+      SUM(amount) AS total
+    FROM expenses
+    WHERE user_id = ? AND DATE(date) = ?
+    GROUP BY LOWER(TRIM(category_name))
+    ORDER BY LOWER(TRIM(category_name))
+  `;
+
+  db.query(sql, [user_id, date], (err, rows) => {
+    if (err) {
+      console.error('Error in day report:', err);
+      return res.status(500).json({ message: 'Server error' });
+    }
+
+    let total = 0;
+    const categories = {};
+
+    rows.forEach(r => {
+      total += parseFloat(r.total);
+      categories[r.category_name] = parseFloat(r.total);
+    });
+
+    res.json({ 
+      total: total.toFixed(2), 
+      categories 
+    });
+  });
+});
+
+// report/month
+router.get('/report/month', (req, res) => {
+  const { user_id, year, month } = req.query;
+
+  const sql = `
+    SELECT 
+      LOWER(TRIM(category_name)) AS category_name, 
+      SUM(amount) AS total
+    FROM expenses
+    WHERE user_id = ? 
+      AND YEAR(date) = ?
+      AND MONTH(date) = ?
+    GROUP BY LOWER(TRIM(category_name))
+    ORDER BY LOWER(TRIM(category_name))
+  `;
+
+  db.query(sql, [user_id, year, month], (err, rows) => {
+    if (err) {
+      console.error('Error in month report:', err);
+      return res.status(500).json({ message: 'Server error' });
+    }
+
+    let total = 0;
+    const categories = {};
+
+    rows.forEach(r => {
+      total += parseFloat(r.total);
+      categories[r.category_name] = parseFloat(r.total);
+    });
+
+    res.json({ 
+      total: total.toFixed(2), 
+      categories 
+    });
+  });
+});
+
+// report/year
+router.get('/report/year', (req, res) => {
+  const { user_id, year } = req.query;
+
+  const sql = `
+    SELECT 
+      LOWER(TRIM(category_name)) AS category_name, 
+      SUM(amount) AS total
+    FROM expenses
+    WHERE user_id = ?
+      AND YEAR(date) = ?
+    GROUP BY LOWER(TRIM(category_name))
+    ORDER BY LOWER(TRIM(category_name))
+  `;
+
+  db.query(sql, [user_id, year], (err, rows) => {
+    if (err) {
+      console.error('Error in year report:', err);
+      return res.status(500).json({ message: 'Server error' });
+    }
+
+    let total = 0;
+    const categories = {};
+
+    rows.forEach(r => {
+      total += parseFloat(r.total);
+      categories[r.category_name] = parseFloat(r.total);
+    });
+
+    res.json({ 
+      total: total.toFixed(2), 
+      categories 
+    });
+  });
+});
 module.exports = router;
