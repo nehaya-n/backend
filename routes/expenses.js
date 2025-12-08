@@ -16,23 +16,8 @@ router.post('/', (req, res) => {
 
   console.log('Item name received:', item_name);
 
-<<<<<<< HEAD
   // تجهيز الاسم
- // تحديد اسم العنصر
-let finalItemName;
-
-// إذا Food → لازم يحمل الاسم كما هو
-if (category_name.toLowerCase() === 'food') {
-  finalItemName = item_name.trim();
-} 
-// إذا غير Food → خلي اسم العنصر = اسم التصنيف
-else {
-  finalItemName = category_name;
-}
-
-=======
   let finalItemName = item_name && item_name.trim() !== '' ? item_name.trim() : 'Unnamed Food';
->>>>>>> 33cf99573e202b4007b70846d88a46d32b6747ed
 
   if (/^\d+$/.test(finalItemName)) {
     return res.status(400).json({ message: 'Invalid item_name: cannot be only numbers' });
