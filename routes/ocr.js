@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Tesseract = require('tesseract.js');
+const { createWorker } = require('tesseract.js');
+
+
+
 
 router.post('/', async (req, res) => {
   try {
