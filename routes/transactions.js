@@ -32,4 +32,26 @@ router.get('/', (req, res) => {
   });
 });
 
+
+router.get('/user-transactions', (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+  const sql = `
+    SELECT t.*, w.name AS wallet_name
+    FROM transactions t
+    JOIN wallets w ON t.wallet_id = w.id
+    WHERE w.user_id = ?
+    ORDER BY t.date DESC
+  `;
+
+  db.query(sql, [user_id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error', details: err.message });
+    res.set('Cache-Control', 'no-store');
+    res.json(results);
+  });
+});
+
+
+
 module.exports = router;

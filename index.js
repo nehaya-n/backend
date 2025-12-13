@@ -39,6 +39,7 @@ const receiptRoutes = require('./routes/receipt');
 app.use("/api/receipt", receiptRoutes);
 const reportsRoutes = require('./routes/reports');
 app.use('/api/reports', reportsRoutes);
+app.use('/api/risk', require('./routes/risk'));
 
 
 app.get("/", (req, res) => {
