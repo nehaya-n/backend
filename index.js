@@ -40,6 +40,20 @@ app.use("/api/receipt", receiptRoutes);
 const reportsRoutes = require('./routes/reports');
 app.use('/api/reports', reportsRoutes);
 app.use('/api/risk', require('./routes/risk'));
+app.use('/api/users', require('./routes/users'));
+
+
+app.get("/api/users/:id", (req, res) => {
+  const userId = req.params.id;
+
+  db.query("SELECT id, full_name, email, phone_number, image FROM users WHERE id = ?", [userId], (err, results) => {
+    if (err) return res.status(500).json({ message: "Database error", error: err });
+
+    if (results.length === 0) return res.status(404).json({ message: "User not found" });
+
+    res.json(results[0]);
+  });
+});
 
 
 app.get("/", (req, res) => {
