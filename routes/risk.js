@@ -2,12 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// ===============================
+// GET /api/risk/monthly
+// ===============================
 router.get('/monthly', (req, res) => {
   const { user_id, year, month } = req.query;
 
+  // -------- Validation --------
   if (!user_id || !year || !month) {
-    return res.status(400).json({ message: 'Missing parameters' });
+    return res.status(400).json({
+      message: 'Missing parameters (user_id, year, month)'
+    });
   }
+
+  // -------- SQL Queries --------
 
   // 1️⃣ Monthly expenses
   const expensesSql = `
@@ -48,22 +56,40 @@ router.get('/monthly', (req, res) => {
       AND MONTH(t.date) = ?
   `;
 
-  db.query(expensesSql, [user_id, year, month], (e1, exp) => {
-    const expenses = exp[0].total || 0;
+  // -------- Execute Queries --------
 
-    db.query(incomeSql, [user_id, year, month], (e2, inc) => {
-      const income = inc[0].total || 1;
+  db.query(expensesSql, [user_id, year, month], (err1, exp) => {
+    if (err1) return res.status(500).json({ error: err1.message });
 
-      db.query(balanceSql, [user_id], (e3, bal) => {
-        const balance = bal[0].total || 0;
+    const expenses = Number(exp[0]?.total) || 0;
 
-        db.query(debtSql, [user_id, year, month], (e4, debt) => {
-          const debtPayments = debt[0].total || 0;
+    db.query(incomeSql, [user_id, year, month], (err2, inc) => {
+      if (err2) return res.status(500).json({ error: err2.message });
 
-          // 🔢 Calculations
-          const spendingRatio = expenses / income;
-          const emergencyMonths = expenses > 0 ? balance / expenses : 6;
-          const debtRatio = debtPayments / income;
+      const income = Number(inc[0]?.total) || 0;
+
+      db.query(balanceSql, [user_id], (err3, bal) => {
+        if (err3) return res.status(500).json({ error: err3.message });
+
+        const balance = Number(bal[0]?.total) || 0;
+
+        db.query(debtSql, [user_id, year, month], (err4, debt) => {
+          if (err4) return res.status(500).json({ error: err4.message });
+
+          const debtPayments = Number(debt[0]?.total) || 0;
+
+          // ================= SAFE CALCULATIONS =================
+
+          const spendingRatio =
+            income > 0 ? expenses / income : 0;
+
+          const emergencyMonths =
+            expenses > 0 ? balance / expenses : 6;
+
+          const debtRatio =
+            income > 0 ? debtPayments / income : 0;
+
+          // ================= SCORING LOGIC =================
 
           const spendingScore =
             spendingRatio < 0.5 ? 15 :
@@ -82,13 +108,22 @@ router.get('/monthly', (req, res) => {
             emergencyScore * 0.35 +
             debtScore * 0.25;
 
-          res.json({
+          // ================= RESPONSE =================
+
+          return res.json({
             riskValue: Math.round(riskValue),
-            lastMonthValue: null, // نضيفه لاحقًا
             factors: {
-              spendingVsIncome: spendingScore < 30 ? "Good" : spendingScore < 60 ? "Medium" : "High",
-              emergencyFund: emergencyScore < 30 ? "Good" : emergencyScore < 60 ? "Medium" : "High",
-              debtRatio: debtScore < 30 ? "Good" : debtScore < 60 ? "Medium" : "High",
+              spendingVsIncome:
+                spendingScore < 30 ? 'Good' :
+                spendingScore < 60 ? 'Medium' : 'High',
+
+              emergencyFund:
+                emergencyScore < 30 ? 'Good' :
+                emergencyScore < 60 ? 'Medium' : 'High',
+
+              debtRatio:
+                debtScore < 30 ? 'Good' :
+                debtScore < 60 ? 'Medium' : 'High',
             }
           });
         });
