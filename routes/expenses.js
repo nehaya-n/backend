@@ -4,11 +4,20 @@ const db = require('../db');
 
 
 router.post('/', (req, res) => {
-  const { user_id, wallet_id, category_name, item_name, icon, amount, date } = req.body;
+const { user_id, wallet_id, category_name, item_name, icon, amount, date } = req.body;
 
-  if (!user_id || !wallet_id || !category_name || !amount || !date) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
+// 🔥 ضمان تاريخ صحيح
+let finalDate = date ? new Date(date) : new Date();
+
+// لو التاريخ مش صالح
+if (isNaN(finalDate.getTime())) {
+  finalDate = new Date();
+}
+
+  if (!user_id || !wallet_id || !category_name || !amount) {
+  return res.status(400).json({ message: 'Missing required fields' });
+}
+
 
   if (category_name.toLowerCase() === 'food' && (!item_name || item_name.trim() === '')) {
     return res.status(400).json({ message: 'Food expenses must include item_name' });
@@ -30,7 +39,7 @@ router.post('/', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(sql, [user_id, wallet_id, category_name, finalItemName, amount, date], (err, result) => {
+db.query( sql,[user_id, wallet_id, category_name, finalItemName, amount, finalDate],(err, result) =>  {
     if (err) {
       console.error('Error saving expense:', err);
       return res.status(500).json({ message: 'Server error' });
@@ -101,20 +110,34 @@ router.delete('/:id', (req, res) => {
     res.json({ message: 'Expense deleted successfully' });
   });
 });
-// ------------------------------------------------------
-// PUT /api/expenses/:id → تحديث مبلغ مصروف
+
+// PUT /api/expenses/:id → تحديث اسم + مبلغ مصروف
 // ------------------------------------------------------
 router.put('/:id', (req, res) => {
   const expenseId = req.params.id;
-  const { amount } = req.body;
+  const { amount, item_name } = req.body;
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Invalid amount' });
   }
 
-  const sql = `UPDATE expenses SET amount = ? WHERE id = ?`;
+  if (!item_name || item_name.trim() === '') {
+    return res.status(400).json({ message: 'Item name is required' });
+  }
 
-  db.query(sql, [amount, expenseId], (err, result) => {
+  if (/^\d+$/.test(item_name.trim())) {
+    return res
+      .status(400)
+      .json({ message: 'Invalid item_name: cannot be only numbers' });
+  }
+
+  const sql = `
+    UPDATE expenses
+    SET amount = ?, item_name = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [amount, item_name.trim(), expenseId], (err, result) => {
     if (err) {
       console.error('Error updating expense:', err);
       return res.status(500).json({ message: 'Server error' });
@@ -124,9 +147,14 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    res.json({ message: 'Expense updated successfully', amount });
+    res.json({
+      message: 'Expense updated successfully',
+      amount,
+      item_name: item_name.trim(),
+    });
   });
 });
+
 
 
 
