@@ -68,6 +68,7 @@ app.post("/register", (req, res) => {
         return res.status(400).json({ message: "All fields are required." });
     }
 
+    // تحقق من وجود البريد مسبقًا
     db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
         if (err) return res.status(500).json({ message: "Database error", error: err });
 
@@ -75,16 +76,30 @@ app.post("/register", (req, res) => {
             return res.status(400).json({ message: "Email already exists." });
         }
 
+        // إدخال المستخدم الجديد
         db.query(
             "INSERT INTO users (full_name, email, password, phone_number) VALUES (?, ?, ?, ?)",
             [full_name, email, password, phone_number],
-            (err) => {
+            (err, result) => {
                 if (err) return res.status(500).json({ message: "Database error", error: err });
-                res.json({ message: "Registration successful 🎉" });
+
+                const userId = result.insertId;
+
+                // إنشاء محفظة افتراضية للمستخدم مباشرة
+                db.query(
+                    "INSERT INTO wallets (user_id, name, balance) VALUES (?, ?, ?)",
+                    [userId, "My Wallet", 0.0],
+                    (err) => {
+                        if (err) return res.status(500).json({ message: "Wallet creation error", error: err });
+
+                        res.json({ message: "Registration successful 🎉" });
+                    }
+                );
             }
         );
     });
 });
+
 
 
 // --- LOGIN ---

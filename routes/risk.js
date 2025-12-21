@@ -2,22 +2,18 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// ===============================
-// GET /api/risk/monthly
-// ===============================
+
 router.get('/monthly', (req, res) => {
   const { user_id, year, month } = req.query;
 
-  // -------- Validation --------
   if (!user_id || !year || !month) {
     return res.status(400).json({
       message: 'Missing parameters (user_id, year, month)'
     });
   }
 
-  // -------- SQL Queries --------
 
-  // 1️⃣ Monthly expenses
+  //  Monthly expenses
   const expensesSql = `
     SELECT SUM(amount) AS total
     FROM expenses
@@ -26,7 +22,7 @@ router.get('/monthly', (req, res) => {
       AND MONTH(date) = ?
   `;
 
-  // 2️⃣ Monthly income
+  //  Monthly income
   const incomeSql = `
     SELECT SUM(amount) AS total
     FROM transactions t
@@ -37,14 +33,14 @@ router.get('/monthly', (req, res) => {
       AND MONTH(t.date) = ?
   `;
 
-  // 3️⃣ Wallet balance
+  //  Wallet balance
   const balanceSql = `
     SELECT SUM(balance) AS total
     FROM wallets
     WHERE user_id = ?
   `;
 
-  // 4️⃣ Debt payments
+  //  Debt payments
   const debtSql = `
     SELECT SUM(amount) AS total
     FROM transactions t
@@ -56,7 +52,6 @@ router.get('/monthly', (req, res) => {
       AND MONTH(t.date) = ?
   `;
 
-  // -------- Execute Queries --------
 
   db.query(expensesSql, [user_id, year, month], (err1, exp) => {
     if (err1) return res.status(500).json({ error: err1.message });
@@ -78,7 +73,6 @@ router.get('/monthly', (req, res) => {
 
           const debtPayments = Number(debt[0]?.total) || 0;
 
-          // ================= SAFE CALCULATIONS =================
 
           const spendingRatio =
             income > 0 ? expenses / income : 0;
@@ -89,7 +83,6 @@ router.get('/monthly', (req, res) => {
           const debtRatio =
             income > 0 ? debtPayments / income : 0;
 
-          // ================= SCORING LOGIC =================
 
           const spendingScore =
             spendingRatio < 0.5 ? 15 :
@@ -108,7 +101,6 @@ router.get('/monthly', (req, res) => {
             emergencyScore * 0.35 +
             debtScore * 0.25;
 
-          // ================= RESPONSE =================
 
           return res.json({
             riskValue: Math.round(riskValue),

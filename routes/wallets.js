@@ -4,11 +4,51 @@ const db = require('../db');
 
 
 router.get('/', (req, res) => {
-  const sql = "SELECT * FROM wallets ORDER BY id";
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ message: 'Database error', error: err });
+  const userId = parseInt(req.query.user_id);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: 'user_id is required' });
+  }
+
+  const sql = `
+    SELECT *
+    FROM wallets
+    WHERE user_id = ?
+    ORDER BY id
+  `;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        message: 'Database error',
+        error: err
+      });
+    }
     res.json(results);
   });
+});
+
+
+
+// GET wallet by user_id
+router.get('/user/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  db.query(
+    'SELECT * FROM wallets WHERE user_id = ? LIMIT 1',
+    [userId],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Database error', err });
+      }
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Wallet not found' });
+      }
+
+      res.json(result[0]);
+    }
+  );
 });
 
 

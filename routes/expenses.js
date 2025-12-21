@@ -67,10 +67,27 @@ db.query( sql,[user_id, wallet_id, category_name, finalItemName, amount, finalDa
       });
     });
 
-  }); // ← إغلاق db.query الأول
+  }); 
 
 });
 
+router.get('/user/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  const sql = `
+    SELECT id, category_name, item_name, amount, date
+    FROM expenses
+    WHERE user_id = ?
+    ORDER BY date DESC
+  `;
+
+  db.query(sql, [userId], (err, rows) => {
+    if (err)
+      return res.status(500).json({ message: 'Server error' });
+
+    res.json(rows);
+  });
+});
 
 router.get('/', (req, res) => {
   const sql = `
