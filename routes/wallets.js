@@ -30,7 +30,28 @@ router.get('/', (req, res) => {
 
 
 
-// GET wallet by user_id
+router.get('/:walletId', (req, res) => {
+  const { walletId } = req.params;
+
+  db.query(
+    'SELECT * FROM wallets WHERE id = ? LIMIT 1',
+    [walletId],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Database error', err });
+      }
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Wallet not found' });
+      }
+
+      res.json(result[0]);
+    }
+  );
+});
+
+
+
 router.get('/user/:userId', (req, res) => {
   const { userId } = req.params;
 

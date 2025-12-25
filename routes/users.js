@@ -64,6 +64,25 @@ router.put('/:id/password', (req, res) => {
 });
 
 
+router.put('/currency/:id', (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { currency } = req.body;
+
+  if (!currency) {
+    return res.status(400).json({ message: 'Currency is required' });
+  }
+
+  const sql = 'UPDATE users SET currency = ? WHERE id = ?';
+  db.query(sql, [currency, userId], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.json({ message: 'Currency updated successfully' });
+  });
+});
+
+
 
 module.exports = router;
 
