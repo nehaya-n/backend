@@ -82,6 +82,22 @@ router.put('/currency/:id', (req, res) => {
   });
 });
 
+router.put('/language/:id', (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { language } = req.body;
+
+  if (!language) {
+    return res.status(400).json({ message: 'Language is required' });
+  }
+
+  const sql = 'UPDATE users SET language = ? WHERE id = ?';
+  db.query(sql, [language, userId], (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.json({ message: 'Language updated successfully' });
+  });
+});
 
 
 module.exports = router;
