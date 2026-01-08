@@ -208,6 +208,72 @@ app.put('/api/admin/block-user/:id', (req, res) => {
     });
 });
 
+app.post('/google-login', (req, res) => {
+  const { email, full_name } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  db.query(
+    "SELECT * FROM users WHERE email = ?",
+    [email],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: "Database error", err });
+
+      if (results.length > 0) {
+        const user = results[0];
+
+        return res.json({
+          message: "Login successful",
+          user: {
+            id: user.id,
+            email: user.email,
+            isAdmin: user.email === "admin@gmail.com",
+          },
+        });
+      }
+
+      const fakePassword = Math.random().toString(36).slice(-10);
+
+      db.query(
+        `INSERT INTO users (full_name, email, password, phone_number)
+         VALUES (?, ?, ?, ?)`,
+        [full_name ?? "Google User", email, fakePassword, null],
+        (err, result) => {
+          if (err)
+            return res.status(500).json({ message: "User creation failed", err });
+
+          const userId = result.insertId;
+
+          db.query(
+            "INSERT INTO wallets (user_id, name, balance) VALUES (?, ?, ?)",
+            [userId, "My Wallet", 0.0],
+            (err) => {
+              if (err)
+                return res
+                  .status(500)
+                  .json({ message: "Wallet creation failed", err });
+
+              return res.json({
+                message: "Google account created",
+                user: {
+                  id: userId,
+                  email,
+                  isAdmin: false,
+                },
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
